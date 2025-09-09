@@ -107,7 +107,7 @@
         <button id="btnBegin" class="primary">Begin Quiz</button>
       </div>
     </section>
-    <section class="row">
+    <section id="quiz" class="row hidden">
       <div class="card">
         <div class="meta">
           <span class="pill" id="difficultyPill">Difficulty: –</span>
@@ -303,7 +303,9 @@ const elFinalScore = $('#finalScore');
 const elFinalTotal = $('#finalTotal');
 const elFinalTips = $('#finalTips');
 const elDiff = $('#difficultyPill');
-
+const elIntro = $('#intro');
+const elQuiz  = $('#quiz');
+  
 $('#btnSkip').addEventListener('click', () => submit(true));
 $('#btnSubmit').addEventListener('click', () => submit(false));
 $('#btnNext').addEventListener('click', next);
@@ -492,9 +494,12 @@ function exportCSV(){
   a.href = url; a.download = 'guess-the-segment_results.csv'; a.click();
   URL.revokeObjectURL(url);
 }
+$('#btnBegin').addEventListener('click', () => {
+  elIntro.classList.add('hidden');   // hide intro
+  elQuiz.classList.remove('hidden'); // show quiz
+  start();                            // build deck & render first question
+});
 
-// Go!
-start();
 </script>
 </body>
 </html>
