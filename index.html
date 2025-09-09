@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Guess the Segment — Interactive Quiz</title>
+<style>
+  :root{
+    --bg:#0b1220; --panel:#0f172a; --muted:#9aa3b2; --text:#e6eef7; --accent:#60a5fa;
+    --good:#22c55e; --bad:#ef4444; --warn:#f59e0b; --border:#23324d;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+    background:radial-gradient(1200px 800px at 20% -10%, #142042, #0b1220 60%);
+    color:var(--text);
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:24px}
+  header{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px}
+  h1{font-size:clamp(22px, 3vw, 32px); margin:0}
+  .card{
+    background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    border:1px solid var(--border); border-radius:18px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,0.2);
+  }
+  .row{display:grid; gap:14px}
+  @media(min-width:820px){ .row{grid-template-columns: 3fr 2fr} }
+
+  .meta{display:flex; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:14px}
+  .pill{border:1px solid var(--border); padding:4px 10px; border-radius:999px}
+
+  .prompt{font-size:18px; background:#0b1328; border:1px dashed var(--border); border-radius:14px; padding:14px}
+  .prompt strong{color:#eaf2ff}
+
+  fieldset{border:0; margin:0; padding:0}
+  legend{font-weight:700; margin-bottom:8px}
+  .options{display:grid; gap:10px}
+  .option{
+    display:flex; align-items:start; gap:12px; padding:12px; border:1px solid var(--border); border-radius:12px; cursor:pointer;
+    transition:transform .05s ease, border-color .2s ease;
+    background:#0f1a33;
+  }
+  .option:hover{transform:translateY(-1px); border-color:#33518a}
+  .option input{margin-top:2px}
+
+  .controls{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
+  button{appearance:none; border:1px solid var(--border); background:#13244a; color:var(--text); padding:10px 14px; border-radius:12px; cursor:pointer}
+  button.primary{background:linear-gradient(180deg,#2563eb,#1d4ed8); border-color:#1d4ed8}
+  button.ghost{background:transparent}
+  button:disabled{opacity:0.6; cursor:not-allowed}
+
+  .status{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:16px 0}
+  .bar{height:10px; background:#0f1a33; border:1px solid var(--border); border-radius:999px; overflow:hidden}
+  .bar > i{display:block; height:100%; width:0; background:linear-gradient(90deg, #60a5fa, #22c55e)}
+
+  .feedback{margin-top:12px; padding:12px; border-radius:12px; border:1px solid var(--border)}
+  .feedback.good{background:rgba(34,197,94,.08); border-color:#164b2e}
+  .feedback.bad{background:rgba(239,68,68,.08); border-color:#4c1d1d}
+  .feedback .title{font-weight:700}
+
+  .scorebox{display:flex; gap:12px; align-items:center}
+  .score{font-weight:800; font-size:18px}
+
+  .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:12px; border:1px solid var(--border); padding:2px 6px; border-radius:6px; background:#0f1a33; color:#cfe1ff}
+
+  footer{margin-top:22px; color:var(--muted); font-size:14px}
+  .hidden{display:none !important}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>🎯 Guess the Segment</h1>
+      <div class="scorebox card" style="padding:8px 12px">
+        <span>Score</span>
+        <span class="score" id="score">0</span>
+        <span class="pill" id="progressPill">Q <span id="qnum">1</span>/<span id="qtotal">–</span></span>
+      </div>
+    </header>
+    <!-- Intro / How it works -->
+    <section id="intro" class="card">
+      <h2 style="margin:0 0 8px 0">Before you play: the 4 segmentation types</h2>
+      <p class="prompt" style="margin:10px 0">Segmentation means splitting a broad market into smaller <strong>groups</strong> of people with something in common. Most campaigns lean primarily on one of these four:</p>
+      <div class="grid2">
+        <div class="callout">
+          <h3>📍 Geographic</h3>
+          <p>Based on <strong>location</strong> (city, region, climate).<br>Clues: place names, postcodes, delivery areas.</p>
+          <p style="margin-top:6px; color:var(--muted)"><em>Ex:</em> “Free delivery in EX4”, “Only in Newquay this weekend”.</p>
+        </div>
+        <div class="callout">
+          <h3>👤 Demographic</h3>
+          <p>Based on <strong>who</strong> people are (age, life stage, income, education).<br>Clues: “students”, “postgrad”, “parents”.</p>
+          <p style="margin-top:6px; color:var(--muted)"><em>Ex:</em> “20% off for postgrads”, “Under-25 railcard”.</p>
+        </div>
+        <div class="callout">
+          <h3>🧠 Psychographic</h3>
+          <p>Based on <strong>lifestyle, values, identity</strong>.<br>Clues: eco-friendly, hobbyist, minimalist, creator, gamer.</p>
+          <p style="margin-top:6px; color:var(--muted)"><em>Ex:</em> “Zero-plastic shampoo”, “Single-origin coffee lovers”.</p>
+        </div>
+        <div class="callout">
+          <h3>🕒 Behavioral</h3>
+          <p>Based on <strong>actions and timing</strong> (usage, loyalty, occasion, benefits sought).<br>Clues: “your usual”, “flash sale”, “off-peak”, streaks.</p>
+          <p style="margin-top:6px; color:var(--muted)"><em>Ex:</em> “Points on meat-free Mondays”, “Half-marathon plan”.</p>
+        </div>
+      </div>
+      <div class="controls" style="margin-top:12px">
+        <button id="btnBegin" class="primary">Begin Quiz</button>
+      </div>
+    </section>
+    <section class="row">
+      <div class="card">
+        <div class="meta">
+          <span class="pill" id="difficultyPill">Difficulty: –</span>
+          <span class="pill">Segmentation types: Demographic · Geographic · Psychographic · Behavioral</span>
+          <span class="pill">Shortcuts: <span class="kbd">1-4</span> to pick · <span class="kbd">S</span> to select type · <span class="kbd">Enter</span> submit</span>
+        </div>
+        <h2 style="margin:12px 0 8px 0">Ad Snapshot</h2>
+        <div id="adPrompt" class="prompt">Loading…</div>
+
+        <div class="status">
+          <div style="min-width:170px">Progress</div>
+          <div class="bar" style="flex:1"><i id="progressBar"></i></div>
+        </div>
+
+        <div id="feedback" class="feedback hidden"></div>
+      </div>
+
+      <div class="card">
+        <form id="quizForm">
+          <fieldset>
+            <legend>Who is the **target audience**?</legend>
+            <div class="options" id="audienceOptions"></div>
+          </fieldset>
+          <hr style="border:0; border-top:1px solid var(--border); margin:14px 0" />
+          <fieldset>
+            <legend>What **segmentation type** is this?</legend>
+            <div class="options" id="segTypeOptions"></div>
+          </fieldset>
+          <div class="controls">
+            <button type="button" class="ghost" id="btnSkip">Skip</button>
+            <button type="submit" class="primary" id="btnSubmit">Submit</button>
+            <button type="button" id="btnNext" class="hidden">Next</button>
+            <button type="button" id="btnReveal" class="ghost">Hint</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section id="final" class="card hidden" style="margin-top:16px">
+      <h2>Results</h2>
+      <p>You scored <strong id="finalScore">0</strong> out of <strong id="finalTotal">0</strong>.</p>
+      <div id="finalTips" class="prompt" style="margin-top:10px"></div>
+      <div class="controls" style="margin-top:12px">
+        <button id="btnRestart" class="primary">Play again</button>
+        <button id="btnExport" class="ghost">Export results (CSV)</button>
+      </div>
+    </section>
+
+
+  </div>
+
+<script>
+// ------------------------------
+// Configurable Item Bank
+// ------------------------------
+const ITEM_BANK = [
+  {
+    difficulty: 'Easy',
+    prompt: 'Poster for a cereal brand: “Power-up breakfast for exam week.” Image shows teenagers in school uniforms, copy mentions BTECs and snack-on-the-go.',
+    audienceOptions: ['Parents with toddlers','16–18 year-old students','Busy professionals 30–45','Retired couples'],
+    correctAudience: '16–18 year-old students',
+    segTypeOptions: ['Demographic','Geographic','Psychographic','Behavioral'],
+    correctSegType: 'Behavioral',
+    explanation: 'References to exams and on-the-go usage point to behavior (occasion/usage). The visuals and language target older teens.'
+  },
+  {
+    difficulty: 'Easy',
+    prompt: 'Instagram ad for a budget airline: “48-hour flash sale from Manchester to Barcelona”. Map pin and “from £19”.',
+    audienceOptions: ['People living near Manchester','Families with newborns','Vegans who love hiking','Luxury travelers'],
+    correctAudience: 'People living near Manchester',
+    segTypeOptions: ['Geographic','Psychographic','Demographic','Behavioral'],
+    correctSegType: 'Geographic',
+    explanation: 'The ad is limited to a departure city — classic geographic segmentation. Price-sensitive travelers nearby are implied audience.'
+  },
+  {
+    difficulty: 'Medium',
+    prompt: 'YouTube pre-roll for a premium coffee machine: “Craft café-quality at home.” Shows minimalist kitchen, mentions “single origin” and “latte art.”',
+    audienceOptions: ['Price-conscious students','Home barista hobbyists','Children under 10','People booking package holidays'],
+    correctAudience: 'Home barista hobbyists',
+    segTypeOptions: ['Psychographic','Demographic','Geographic','Behavioral'],
+    correctSegType: 'Psychographic',
+    explanation: 'Appeals to lifestyle/interest (quality, single-origin, hobbyist identity) — classic psychographic cues.'
+  },
+  {
+    difficulty: 'Medium',
+    prompt: 'TikTok for a fitness app: “12‑week half-marathon plan + shoe discounts after week 3.” Shows running streak calendar.',
+    audienceOptions: ['People who hate running','Experienced marathoners only','New/aspiring distance runners','Primary school kids'],
+    correctAudience: 'New/aspiring distance runners',
+    segTypeOptions: ['Behavioral','Psychographic','Demographic','Geographic'],
+    correctSegType: 'Behavioral',
+    explanation: 'Targets users based on readiness/use stage and builds loyalty with timed discounts — behavior-based segmentation.'
+  },
+  {
+    difficulty: 'Medium',
+    prompt: 'Billboard for an eco-friendly shampoo: “Zero plastic, zero compromise.” Photos of hikers and a refill station locator link.',
+    audienceOptions: ['Eco-conscious adults','Toddlers who like cartoons','People who only fly private jets','Gamers who hate outdoors'],
+    correctAudience: 'Eco-conscious adults',
+    segTypeOptions: ['Psychographic','Behavioral','Demographic','Geographic'],
+    correctSegType: 'Psychographic',
+    explanation: 'Values and lifestyle cues (sustainability, hiking) indicate psychographic segmentation.'
+  },
+  {
+    difficulty: 'Hard',
+    prompt: 'Snap ad for a new revision‑notes app: “GCSE packs updated for AQA/OCR; free trial this weekend.”',
+    audienceOptions: ['UK secondary students','US high-school teachers','Postgraduate researchers','Retired book clubs'],
+    correctAudience: 'UK secondary students',
+    segTypeOptions: ['Geographic','Demographic','Behavioral','Psychographic'],
+    correctSegType: 'Geographic',
+    explanation: 'Explicit UK exam boards (AQA/OCR) imply a UK location segment; audience is also age-based, but the primary cue is geographic.'
+  },
+  {
+    difficulty: 'Hard',
+    prompt: 'Email for a supermarket loyalty card: “Get points on meat-free products every Monday.”',
+    audienceOptions: ['Customers who shop only at weekends','Shoppers who buy vegetarian/vegan items','People who never use discounts','Tourists on a short trip'],
+    correctAudience: 'Shoppers who buy vegetarian/vegan items',
+    segTypeOptions: ['Behavioral','Psychographic','Geographic','Demographic'],
+    correctSegType: 'Behavioral',
+    explanation: 'Loyalty messaging + specific product behavior (meat-free) = behavioral segmentation (benefits sought, purchase behavior).'
+  },
+  {
+    difficulty: 'Medium',
+    prompt: 'Poster at a university gym: “Off‑peak membership for postgrads 20% off.”',
+    audienceOptions: ['Postgraduate students who can train off‑peak','Parents with toddlers','Festival volunteers','Night-shift nurses at city hospital'],
+    correctAudience: 'Postgraduate students who can train off‑peak',
+    segTypeOptions: ['Demographic','Behavioral','Psychographic','Geographic'],
+    correctSegType: 'Demographic',
+    explanation: 'Identifies a specific life-stage/education status (postgraduates). Off‑peak is a timing benefit but primary cut is demographic.'
+  },
+  {
+    difficulty: 'Easy',
+    prompt: 'Local pizza flyer: “Free delivery in EX4. Student deal: any 12” for £5.99 with college ID.”',
+    audienceOptions: ['Residents in EX4 & students nearby','People living 200 miles away','Luxury hotel guests only','Professional chefs'],
+    correctAudience: 'Residents in EX4 & students nearby',
+    segTypeOptions: ['Geographic','Demographic','Behavioral','Psychographic'],
+    correctSegType: 'Geographic',
+    explanation: 'Delivery radius and postcode targeting = geographic segmentation. Student ID adds a secondary demographic cue.'
+  },
+  {
+    difficulty: 'Hard',
+    prompt: 'Podcast ad for a budgeting app: “Zero-based budgeting for neurospicy creatives — turn chaos into clarity.”',
+    audienceOptions: ['Artists and designers who struggle with budgeting','Children under 8','People with unlimited income','Professional investment bankers only'],
+    correctAudience: 'Artists and designers who struggle with budgeting',
+    segTypeOptions: ['Psychographic','Behavioral','Demographic','Geographic'],
+    correctSegType: 'Psychographic',
+    explanation: 'Identity- and mindset-led appeal (“creatives”, desire for clarity) is psychographic.'
+  },
+  {
+    difficulty: 'Medium',
+    prompt: 'Push notification from a food app at 11:45: “Burrito time? Your usual is 2 mins away.”',
+    audienceOptions: ['Anyone who never ordered before','Loyal users near lunchtime location','People on a detox retreat','Long‑haul pilots'],
+    correctAudience: 'Loyal users near lunchtime location',
+    segTypeOptions: ['Behavioral','Geographic','Demographic','Psychographic'],
+    correctSegType: 'Behavioral',
+    explanation: 'Uses purchase history ("your usual") and time-of-day nudge — behavioral segmentation with a geo nudge.'
+  },
+  {
+    difficulty: 'Medium',
+    prompt: 'Outdoor ad for a coastal festival: “Surf & sound — this weekend only in Newquay.”',
+    audienceOptions: ['People within driving distance who like surf/music','People who hate the beach','Ski resort workers','Office workers in London only'],
+    correctAudience: 'People within driving distance who like surf/music',
+    segTypeOptions: ['Geographic','Psychographic','Demographic','Behavioral'],
+    correctSegType: 'Geographic',
+    explanation: 'Location-specific (“in Newquay”) makes geography primary; interest in surf/music is secondary psychographic.'
+  }
+];
+
+const SETTINGS = {
+  rounds: 10,          // how many questions per play
+  shuffle: true        // randomize question order
+};
+
+// ------------------------------
+// Game State
+// ------------------------------
+let deck = [];
+let idx = 0;
+let score = 0;
+let results = []; // for export
+
+const $ = sel => document.querySelector(sel);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+const elPrompt = $('#adPrompt');
+const elAudience = $('#audienceOptions');
+const elType = $('#segTypeOptions');
+const elFeedback = $('#feedback');
+const elScore = $('#score');
+const elQNum = $('#qnum');
+const elQTotal = $('#qtotal');
+const elBar = $('#progressBar');
+const elFinal = $('#final');
+const elFinalScore = $('#finalScore');
+const elFinalTotal = $('#finalTotal');
+const elFinalTips = $('#finalTips');
+const elDiff = $('#difficultyPill');
+
+$('#btnSkip').addEventListener('click', () => submit(true));
+$('#btnSubmit').addEventListener('click', () => submit(false));
+$('#btnNext').addEventListener('click', next);
+$('#btnReveal').addEventListener('click', () => hint());
+$('#btnRestart').addEventListener('click', () => start());
+$('#btnExport').addEventListener('click', exportCSV);
+$('#quizForm').addEventListener('submit', e => { e.preventDefault(); submit(false); });
+
+// Keyboard shortcuts
+window.addEventListener('keydown', (e) => {
+  // 1-4 select audience options
+  if(['1','2','3','4'].includes(e.key)){
+    const n = Number(e.key) - 1;
+    const radios = $$('#audienceOptions input[type="radio"]');
+    if(radios[n]){ radios[n].checked = true; radios[n].focus(); }
+  }
+  if(e.key.toLowerCase()==='s'){
+    // cycle seg type
+    const radios = $$('#segTypeOptions input[type="radio"]');
+    const current = radios.findIndex(r=>r.checked);
+    const next = (current+1) % radios.length;
+    radios[next].checked = true; radios[next].focus();
+  }
+  if(e.key==='Enter'){
+    const nextBtnVisible = !$('#btnNext').classList.contains('hidden');
+    nextBtnVisible ? next() : submit(false);
+  }
+});
+
+function start(){
+  score = 0; idx = 0; results = [];
+  deck = [...ITEM_BANK];
+  if(SETTINGS.shuffle) deck.sort(()=>Math.random()-0.5);
+  deck = deck.slice(0, SETTINGS.rounds);
+  elQTotal.textContent = deck.length;
+  elFinal.classList.add('hidden');
+  $('#btnNext').classList.add('hidden');
+  $('#btnSubmit').disabled = false;
+  $('#btnSkip').disabled = false;
+  render();
+}
+
+function render(){
+  const q = deck[idx];
+  elQNum.textContent = idx+1;
+  elDiff.textContent = `Difficulty: ${q.difficulty}`;
+  elPrompt.innerHTML = q.prompt.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+  elFeedback.classList.add('hidden');
+  elFeedback.classList.remove('good','bad');
+
+  // build audience options
+  elAudience.innerHTML = '';
+  q.audienceOptions.forEach((opt,i)=>{
+    const id = `aud-${idx}-${i}`;
+    elAudience.insertAdjacentHTML('beforeend', `
+      <label class="option" for="${id}">
+        <input type="radio" name="aud" id="${id}" value="${opt}">
+        <div>${opt}</div>
+      </label>
+    `);
+  });
+  // build segTypes
+  elType.innerHTML = '';
+  q.segTypeOptions.forEach((opt,i)=>{
+    const id = `typ-${idx}-${i}`;
+    elType.insertAdjacentHTML('beforeend', `
+      <label class="option" for="${id}">
+        <input type="radio" name="typ" id="${id}" value="${opt}">
+        <div>${opt}</div>
+      </label>
+    `);
+  });
+
+  // progress bar
+  const pct = (idx / deck.length) * 100;
+  elBar.style.width = pct + '%';
+}
+
+function submit(skipped=false){
+  const q = deck[idx];
+  const aud = ($('input[name="aud"]:checked')||{}).value;
+  const typ = ($('input[name="typ"]:checked')||{}).value;
+
+  const answered = !!aud && !!typ;
+  if(!answered && !skipped){
+    toast('Pick an audience and a segmentation type.');
+    return;
+  }
+
+  let audCorrect = aud === q.correctAudience;
+  let typCorrect = typ === q.correctSegType;
+
+  const wasCorrect = audCorrect && typCorrect;
+  if(wasCorrect) score += 1;
+  elScore.textContent = score;
+
+  const fb = [];
+  if(skipped){
+    fb.push(`<span class="title">Skipped.</span> Correct: <strong>${q.correctAudience}</strong> · <strong>${q.correctSegType}</strong>.`);
+  } else {
+    fb.push(`<span class="title">${wasCorrect ? 'Correct! ✅' : 'Not quite.'}</span>`);
+    fb.push(`Target audience: <strong>${q.correctAudience}</strong> (${audCorrect ? '✓' : 'you chose ' + (aud || 'none')}).`);
+    fb.push(`Segmentation type: <strong>${q.correctSegType}</strong> (${typCorrect ? '✓' : 'you chose ' + (typ || 'none')}).`);
+  }
+  fb.push(`<div style="margin-top:6px; color:var(--text)">${q.explanation}</div>`);
+
+  elFeedback.innerHTML = fb.join(' ');
+  elFeedback.classList.remove('hidden');
+  elFeedback.classList.toggle('good', wasCorrect);
+  elFeedback.classList.toggle('bad', !wasCorrect && !skipped);
+
+  // record result
+  results.push({
+    qNum: idx+1,
+    difficulty: q.difficulty,
+    prompt: q.prompt.replaceAll('\n',' '),
+    chosenAudience: aud||'(none)',
+    correctAudience: q.correctAudience,
+    chosenSegType: typ||'(none)',
+    correctSegType: q.correctSegType,
+    correct: wasCorrect && !skipped,
+    skipped
+  });
+
+  $('#btnSubmit').disabled = true;
+  $('#btnSkip').disabled = true;
+  $('#btnNext').classList.remove('hidden');
+}
+
+function next(){
+  idx++;
+  $('#btnNext').classList.add('hidden');
+  if(idx >= deck.length){
+    finish();
+  } else {
+    $('#btnSubmit').disabled = false;
+    $('#btnSkip').disabled = false;
+    render();
+  }
+}
+
+function finish(){
+  elBar.style.width = '100%';
+  elFinalScore.textContent = score;
+  elFinalTotal.textContent = deck.length;
+  const tips = score <= deck.length/2
+    ? 'Tip: Watch for primary cues. Location names → Geographic. Age/life-stage labels → Demographic. Values/identity words → Psychographic. Usage, loyalty, timing → Behavioral.'
+    : 'Nice! Consider creating alternate campaigns aimed at a different segment to compare outcomes.';
+  elFinalTips.textContent = tips;
+  elFinal.classList.remove('hidden');
+}
+
+function hint(){
+  const q = deck[idx];
+  let clue = '';
+  const p = q.prompt.toLowerCase();
+  if(p.match(/\b(ex\d|from|to|in\s[a-z]+|manchester|newquay|barcelona)\b/)) clue = 'Think about **where** — that often signals Geographic.';
+  else if(p.match(/gcse|aqa|ocr|postgrad|students|kids|retired|parents/)) clue = 'Mentions **age/education/life stage** — that leans Demographic.';
+  else if(p.match(/loyalty|your usual|trial|discount|streak|week|flash sale|off-peak/)) clue = 'Usage, timing, loyalty — classic Behavioral cues.';
+  else if(p.match(/eco|sustainable|single origin|lifestyle|creatives|values|identity/)) clue = 'Values and identity often mean Psychographic.';
+  else clue = 'Scan for **location**, **age/stage**, **values/identity**, or **usage/timing** cues.';
+  toast(clue);
+}
+
+function toast(msg){
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.position='fixed'; t.style.left='50%'; t.style.top='18px'; t.style.transform='translateX(-50%)';
+  t.style.background='#0f1a33'; t.style.border='1px solid var(--border)'; t.style.padding='10px 14px'; t.style.borderRadius='10px';
+  t.style.boxShadow='0 10px 30px rgba(0,0,0,.3)'; t.style.zIndex=9999;
+  document.body.appendChild(t);
+  setTimeout(()=>{ t.style.transition='opacity .4s'; t.style.opacity='0'; }, 1800);
+  setTimeout(()=> t.remove(), 2300);
+}
+
+function exportCSV(){
+  const headers = ['qNum','difficulty','prompt','chosenAudience','correctAudience','chosenSegType','correctSegType','correct','skipped'];
+  const lines = [headers.join(',')];
+  results.forEach(r=>{
+    const row = headers.map(h=>`"${String(r[h]).replaceAll('"','""')}"`).join(',');
+    lines.push(row);
+  });
+  const blob = new Blob([lines.join('\n')], {type: 'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'guess-the-segment_results.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Go!
+start();
+</script>
+</body>
+</html>
